@@ -7,6 +7,26 @@ int main(){
 	read_file("testcode.txt", buffer);
 	//printf("%s",buffer);
 	token* anchor = tokenize(buffer);
-	print_tokens(anchor);
+	// print_tokens(anchor);
+	// printf("\n");
+	
+	treenode* parser_tree = build_parser_tree(anchor);
+	//printf("parser_tree child[0] = %s",parser_tree->children[0]->word);
+	//print_treenode(parser_tree);
+	//printf("\n");
+	
+	/*treenode* child_1 = parser_tree->children[0];
+	treenode* child_2 = parser_tree->children[1];
+	treenode* child_3 = parser_tree->children[2];
+	treenode* child_4 = parser_tree->children[3];
+	
+	print_treenode(child_1);
+	print_treenode(child_2);
+	print_treenode(child_3);
+	print_treenode(child_4);*/
+	printf("\n");
+	
+	print_tree(parser_tree);
+	
 	return 0;
 }

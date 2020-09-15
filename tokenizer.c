@@ -4,13 +4,13 @@
 
 #include "tokenizer.h"
 
-token* new_token(char word[32]){ // Initializer for token based on word
+token* new_token(char word[WORD_SIZE]){ // Initializer for token based on word
 	token* out = (token*)malloc(sizeof(token));
-	strncpy(out->word,word,32);
+	strncpy(out->word,word,WORD_SIZE);
 	return out;
 }
 
-void read_file(char FILENAME[32], char buffer[255]){ // Reads a file and puts output into char array buffer
+void read_file(char FILENAME[WORD_SIZE], char buffer[BUFFER_SIZE]){ // Reads a file and puts output into char array buffer
 	char c;
 	FILE *file;
 	int iterator = 0;
@@ -26,25 +26,25 @@ void read_file(char FILENAME[32], char buffer[255]){ // Reads a file and puts ou
 	buffer[iterator] = 0; // Null character at end of buffer
 }
 
-char whitespace[32] = " \t\n\r";
+char whitespace[WORD_SIZE] = " \t\n\r";
 int is_whitespace(char c){ // Returns True for each whitespace, else False
-	for(int i = 0; i<32; i++){
+	for(int i = 0; i<WORD_SIZE; i++){
 		if(c == whitespace[i]) return i+1; // Always true for whitespace, even with index 0
 	}
 	return 0;
 }
 
-char comments[32] = "#";
+char comments[WORD_SIZE] = "#";
 int is_comment(char c){ // Returns True for each comment char, else False
-	for(int i = 0; i<32; i++){
+	for(int i = 0; i<WORD_SIZE; i++){
 		if(c == comments[i]) return i+1; // Always true for comment chars, even with index 0
 	}
 	return 0;
 }
 
-char delimiters[32] = "+-*/;=:";
+char delimiters[WORD_SIZE] = "+-*/;=:";
 int is_delimiter(char c){ // Returns True for each delimiter, else False
-	for(int i = 0; i<32; i++){
+	for(int i = 0; i<WORD_SIZE; i++){
 		if(c == delimiters[i]) return i+1; // Always true for delimiters, even with index 0
 	}
 	return 0;
@@ -60,25 +60,25 @@ void print_tokens(token* anchor){ // Prints tokens starting from first non-ancho
 	}
 }
 
-void sanitize_string(char str[32]){ // Fully empties a 32 length string
-	for(int i = 0; i<32; i++){
+void sanitize_string(char str[WORD_SIZE]){ // Fully empties a 32 length string
+	for(int i = 0; i<WORD_SIZE; i++){
 		str[i] = 0;
 	}
 }
 
-token* tokenize(char buff[255]){ // Breaks buffer at special chars into token array starting at anchor. Returns anchor
+token* tokenize(char buff[BUFFER_SIZE]){ // Breaks buffer at special chars into token array starting at anchor. Returns anchor
 	token* anchor = new_token("ANCHOR_TOKEN");
 	token* temp_anchor = anchor;
-	char temp_str[32];
+	char temp_str[WORD_SIZE];
 	sanitize_string(temp_str);
 	
-	for(int i = 0; i<255; i++){
+	for(int i = 0; i<BUFFER_SIZE; i++){
 		char c = buff[i];
 		if(c == 0) break; // Break when null character reached
 		
 		if( is_comment(c) ){
 			int j; // New index
-			for(j = i+1; j<255; j++){
+			for(j = i+1; j<BUFFER_SIZE; j++){
 				char k = buff[j];
 				if(k == '\n' || k == '\r' || k == 0) break;
 			}
