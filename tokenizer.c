@@ -42,7 +42,7 @@ int is_comment(char c){ // Returns True for each comment char, else False
 	return 0;
 }
 
-char delimiters[WORD_SIZE] = "+-*/;=:";
+char delimiters[WORD_SIZE] = "+-*/;=:()[]{}<>";
 int is_delimiter(char c){ // Returns True for each delimiter, else False
 	for(int i = 0; i<WORD_SIZE; i++){
 		if(c == delimiters[i]) return i+1; // Always true for delimiters, even with index 0
@@ -83,6 +83,25 @@ token* tokenize(char buff[BUFFER_SIZE]){ // Breaks buffer at special chars into 
 				if(k == '\n' || k == '\r' || k == 0) break;
 			}
 			i = j+1;
+			
+			sanitize_string(temp_str);
+		}
+		
+		else if( c=='\'' || c=='\"'){
+			int j; // New index
+			sprintf(temp_str,"%c",c);
+			for(j = i+1; j<BUFFER_SIZE; j++){
+				char k = buff[j];
+				sprintf(temp_str,"%s%c",temp_str,k);
+				if(k == '\'' || k == '\"') break;
+			}
+			i = j+1;
+			
+			token* new_temp_token = new_token(temp_str);
+			temp_anchor->next = new_temp_token;
+			temp_anchor = temp_anchor->next;
+			
+			sanitize_string(temp_str);
 		}
 		
 		else if( is_whitespace(c) ){
@@ -94,6 +113,8 @@ token* tokenize(char buff[BUFFER_SIZE]){ // Breaks buffer at special chars into 
 				sanitize_string(temp_str);
 				// strcpy(temp_str,"");
 			}
+			
+			sanitize_string(temp_str);
 		}
 		
 		else if( is_delimiter(c) ){
@@ -106,15 +127,30 @@ token* tokenize(char buff[BUFFER_SIZE]){ // Breaks buffer at special chars into 
 				//strcpy(temp_str,"");
 			}
 			
-			token* new_delim_token = new_token(&c);
+			//printf("TEMP: %s\n",temp_str);
+			sprintf(temp_str,"%c",c);
+			token* new_delim_token = new_token(temp_str);
 			temp_anchor->next = new_delim_token;
 			temp_anchor = temp_anchor->next;
+			
+			sanitize_string(temp_str);
 		}
 		
 		else{
 			sprintf(temp_str,"%s%c",temp_str,c);
 		}
 	}
+			
+	if(strlen(temp_str)>0){ // Add any string left in temp_str
+		token* new_temp_token = new_token(temp_str);
+		temp_anchor->next = new_temp_token;
+		temp_anchor = temp_anchor->next;
+	}
 	
 	return anchor;
+}
+
+int count_tokens(token* anchor){
+	if(anchor==NULL) return 0;
+	return 1+count_tokens(anchor->next);
 }

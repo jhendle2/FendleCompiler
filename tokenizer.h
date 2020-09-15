@@ -17,5 +17,6 @@ int is_delimiter(char c);
 void print_tokens(token* anchor);
 void sanitize_string(char str[WORD_SIZE]);
 token* tokenize(char buff[BUFFER_SIZE]);
+int count_tokens(token* anchor);
 
 #endif

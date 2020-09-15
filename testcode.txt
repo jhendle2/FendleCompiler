@@ -1,3 +1,6 @@
 # Test File
 
-print "Hello" end
+function main {
+	print "Hello 1" end
+	print "Hello 2" end
+}

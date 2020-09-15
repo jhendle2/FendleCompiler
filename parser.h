@@ -2,12 +2,14 @@
 #define PARSER
 
 #include "tokenizer.h"
-#include "weigher.h"
+//#include "weigher.h"
 
 #define MAX_CHILDREN_SIZE 8
 
 enum TYPE{
 	TYPE_NONE,
+	
+	TYPE_METHOD,
 	
 	TYPE_BRANCH,
 	TYPE_IF,
@@ -22,6 +24,7 @@ enum TYPE{
 
 typedef struct treenode{
 	char word[WORD_SIZE];
+	struct treenode* parent;
 	struct treenode** children;
 	
 	int max_num_children;
@@ -40,8 +43,10 @@ treenode* new_treenode_full(char word[WORD_SIZE], enum TYPE type,
 treenode* new_treenode_minimal(char word[WORD_SIZE], enum TYPE type);
 treenode* new_treenode_simple(char word[WORD_SIZE]);
 
-void print_treenode(treenode* node);
-void print_tree(treenode* anchor);
-treenode* build_parser_tree(token* token_anchor);
+void print_treenode(treenode* node, int level);
+void print_tree(treenode* anchor, int level);
+void print_children(treenode* anchor);
+treenode* build_parser_tree(treenode* anchor, token* token_anchor);
+//treenode* build_parser_tree(token* token_anchor);
 
 #endif
