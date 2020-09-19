@@ -16,13 +16,14 @@ void read_file(char FILENAME[WORD_SIZE], char buffer[BUFFER_SIZE]){ // Reads a f
 	int iterator = 0;
 	file = fopen(FILENAME, "r");
 	if(file) {
-		while ((c = getc(file)) != EOF){
-			//putchar(c);
+		while ((c = getc(file))){
+			if(feof(file)) break; // EOF finder. Needed to Linux compatibility?
 			iterator++;
-			sprintf(buffer,"%s%c",buffer,c);
+			strncat(buffer, &c, 1); // Prevents memory error
 		}
 		fclose(file);
 	}
+	
 	buffer[iterator] = 0; // Null character at end of buffer
 }
 
@@ -74,6 +75,7 @@ token* tokenize(char buff[BUFFER_SIZE]){ // Breaks buffer at special chars into 
 	
 	for(int i = 0; i<BUFFER_SIZE; i++){
 		char c = buff[i];
+		//printf("@ %c\n",c);
 		if(c == 0) break; // Break when null character reached
 		
 		if( is_comment(c) ){
@@ -89,13 +91,13 @@ token* tokenize(char buff[BUFFER_SIZE]){ // Breaks buffer at special chars into 
 		
 		else if( c=='\'' || c=='\"'){
 			int j; // New index
-			sprintf(temp_str,"%c",c);
+			strncat(temp_str, &c, 1);
 			for(j = i+1; j<BUFFER_SIZE; j++){
 				char k = buff[j];
-				sprintf(temp_str,"%s%c",temp_str,k);
+				strncat(temp_str, &k, 1);
 				if(k == '\'' || k == '\"') break;
 			}
-			i = j+1;
+			i = j;
 			
 			token* new_temp_token = new_token(temp_str);
 			temp_anchor->next = new_temp_token;
@@ -111,7 +113,6 @@ token* tokenize(char buff[BUFFER_SIZE]){ // Breaks buffer at special chars into 
 				temp_anchor = temp_anchor->next;
 			
 				sanitize_string(temp_str);
-				// strcpy(temp_str,"");
 			}
 			
 			sanitize_string(temp_str);
@@ -124,11 +125,9 @@ token* tokenize(char buff[BUFFER_SIZE]){ // Breaks buffer at special chars into 
 				temp_anchor = temp_anchor->next;
 			
 				sanitize_string(temp_str);
-				//strcpy(temp_str,"");
 			}
 			
-			//printf("TEMP: %s\n",temp_str);
-			sprintf(temp_str,"%c",c);
+			strncat(temp_str, &c, 1);
 			token* new_delim_token = new_token(temp_str);
 			temp_anchor->next = new_delim_token;
 			temp_anchor = temp_anchor->next;
@@ -137,7 +136,7 @@ token* tokenize(char buff[BUFFER_SIZE]){ // Breaks buffer at special chars into 
 		}
 		
 		else{
-			sprintf(temp_str,"%s%c",temp_str,c);
+			strncat(temp_str, &c, 1);
 		}
 	}
 			
@@ -151,6 +150,42 @@ token* tokenize(char buff[BUFFER_SIZE]){ // Breaks buffer at special chars into 
 }
 
 int count_tokens(token* anchor){
-	if(anchor==NULL) return 0;
+	if(anchor==NULL) return -1;
 	return 1+count_tokens(anchor->next);
+}
+
+int word_is_string(char word[WORD_SIZE]){
+	return (strstr(word, "\"") != NULL);
+}
+
+char* const_values = "1234567890";
+
+int word_is_number(char word[WORD_SIZE]){ // Only finds ints, no floats
+	int is_number = 1;
+	for(int i = 0; i<WORD_SIZE; i++){
+		if(word[i] == 0) break;
+		
+		if(strchr(const_values,word[i]) == NULL) is_number *= 0; // If not digit, make false
+	}
+	return is_number;
+}
+
+int word_is_operator(char word[WORD_SIZE]){
+	if(is_delimiter(word[0])) return 1;
+	
+	else if	(strcmp(word,"==")==0) return 1;
+	
+	return 0;
+}
+
+void free_tokens(token* anchor){
+	token* t = anchor;
+	int i = 0;
+	while(t!=NULL){
+		token* next = t->next;
+		free(t);
+		t = next;
+		i++;
+	}
+	printf("<> Freed %d tokens\n",i);
 }

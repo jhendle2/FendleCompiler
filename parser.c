@@ -1,9 +1,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 #include "parser.h"
 
+
 char* type2str(enum TYPE type){
+	char* out = (char*)malloc(sizeof(char)*32);
+	sanitize_string(out);
+	
 	switch(type){
 		case TYPE_METHOD:
 			return "METHOD";
@@ -23,12 +28,41 @@ char* type2str(enum TYPE type){
 	
 		case TYPE_CONSTANT:
 			return "CONSTANT";
-			
+		case TYPE_STRING:
+			return "STRING";
+		case TYPE_OPERATOR:
+			return "OPERATOR";
+				
 		case TYPE_NONE:
 		default:
 			break;
 	}
 	return "NONE";
+}
+
+enum TYPE str2type(char type_as_word[WORD_SIZE]){
+	if		(strcmp(type_as_word,"function")==0) return TYPE_METHOD;
+	else if (strcmp(type_as_word,"if")==0)		return TYPE_IF;
+	else if	(strcmp(type_as_word,"else")==0) 	return TYPE_ELSE;
+	else if (strcmp(type_as_word,"var")==0)		return TYPE_VARIABLE;
+	else if	(strcmp(type_as_word,"print")==0) 	return TYPE_METHOD;
+	else if (word_is_string(type_as_word)) return TYPE_STRING;
+	else if (is_delimiter(type_as_word[0])) return TYPE_OPERATOR;
+	
+	// Add more as you see fit
+	
+	return TYPE_NONE;
+}
+
+int find_constant_from_word(char word[WORD_SIZE]){
+	if(word_is_number(word)){
+		return atoi(word);
+	}
+	/*else{ // This will never happen?
+		printf("[SYNTAX ERROR]: TRYING TO ASSIGN NON-CONSTANT VALUE TO CONSTANT\n");
+		exit(1);
+	}*/
+	return 0;
 }
 
 treenode* new_treenode_full(char word[WORD_SIZE], enum TYPE type, int size, int constant_value, int max_num_children){
@@ -41,182 +75,102 @@ treenode* new_treenode_full(char word[WORD_SIZE], enum TYPE type, int size, int 
 	
 	out->max_num_children = max_num_children;
 	out->children = (treenode**)malloc(sizeof(treenode*)*max_num_children); // sizeof(treenode*) or sizeof(treenode) ?? This fixes segfault error
-	// printf("!! NTF: SIZE = %d\n",(int)(sizeof(out->children)));
-		
+	
 	return out;
-}
-
-treenode* new_treenode_minimal(char word[WORD_SIZE], enum TYPE type){
-	return new_treenode_full(word,type,0,0,MAX_CHILDREN_SIZE);
 }
 
 treenode* new_treenode_simple(char word[WORD_SIZE]){
 	return new_treenode_full(word,TYPE_NONE,0,0,MAX_CHILDREN_SIZE);	
 }
 
-void treenode_add_child(treenode* parent, treenode* child){
-	int child_index = parent->last_child_index;
-	if(child_index == parent->max_num_children - 1) return;
+treenode* token2treenode(token* t){
+	enum TYPE type = str2type(t->word);
 	
-	parent->children[child_index] = child;
-	parent->last_child_index++;
-	parent->num_children++;
-	printf("\tAdded child: <%s> @ %d\n",child->word,child_index);
+	int size = 0;
+	int max_num_children = MAX_CHILDREN_SIZE;
+	int constant_value = 0;
+	if(word_is_number(t->word)) constant_value = find_constant_from_word(t->word);
+	
+	return new_treenode_full(t->word, type, size, constant_value, max_num_children);
 }
 
-void print_treenode(treenode* node, int level){
+
+void print_treenode(treenode* node){
 	if(node==NULL){ // Prevents segfault for null nodes
 		printf("<NONEXISTENT NODE>\n");
 		return;
 	}
-	
-	//printf("!PRINT_TREENODE\n");
-	
+
 	char word[WORD_SIZE];
 	strncpy(word,node->word,WORD_SIZE);
 		
 	enum TYPE type = node->type;
 	
 	char typestr[WORD_SIZE];
-	strncpy(typestr,type2str(type),strlen(type2str(type)));
+	strcpy(typestr,type2str(type));
 	
-	int size = node->size;
-	int val = node->constant_value;
-	
-	for(int i = 0; i<level; i++) printf("\t");
-	
-	printf("<%s> : type=%s, size=%d, val=%d\n",
-		word, typestr, size, val);
-}
-
-void print_children(treenode* anchor){
-	int num_children = anchor->num_children;
-	for(int i = 0; i<num_children; i++){
-		print_treenode(anchor->children[i],0);
-	}
-}
-
-void print_tree(treenode* anchor, int level){
-	//printf("!PRINT_TREE\n");
-	
-	treenode* temp_treenode = anchor;
-	
-	if(temp_treenode->num_children == 0){ // Just print self
-		print_treenode(temp_treenode, level);
-	}
-	
-	else{ // Print self then children
-		int num_children = temp_treenode->num_children;
-		treenode** children = temp_treenode->children;
-
-		print_treenode(temp_treenode, level);
-		for(int i = 0; i<num_children; i++){
-			//printf("\t");
-			print_tree(children[i], level+1);
-		}
-		printf("\n");
-	}
-}
-
-int is_branch_worthy(enum TYPE type){
-	switch(type){
-		case TYPE_METHOD:
-			return 2;
-		case TYPE_BRANCH:
-			return 2;
-		case TYPE_IF:
-			return 2;
-		case TYPE_ELSE:
-			return 2;
-	
-		case TYPE_VARIABLE:
-			return 1;
-		case TYPE_VARIABLE_INT:
-			return 1;
-		case TYPE_VARIABLE_CHAR:
-			return 1;
-	
-		case TYPE_CONSTANT:
-			return 0;
-			
-		case TYPE_NONE:
-		default:
-			break;
-	}
-	return 0;
-}
-
-/*treenode* build_new_branch(char* word, enum TYPE type, token* for_these_tokens){
-	treenode* branch_anchor = new_treenode_minimal(word,type);
-	
-	if( is_branch_worthy(type) == 0) return branch_anchor;
-	
-	token* temp = for_these_tokens;
-	while(temp != NULL){
+	///int size = node->size;
+	///int val = node->constant_value;
+	int num_children = node->num_children;
 		
+	///printf("<%s> : type=%s, parent=<%s>, #children=%d\n",word,typestr,node->parent->word,num_children);
+	printf("<%s> : type=%s, #children=%d\n",word,typestr,num_children);
+}
+
+void treenode_add_child(treenode* parent, treenode* child){ // Add a child to treenode, increase children count
+	int child_index = parent->last_child_index;
+	if(child_index == parent->max_num_children - 1) return;
+	
+	parent->children[child_index] = child;
+	parent->last_child_index++;
+	parent->num_children++;
+	printf("\t<%s> added child: <%s> @ %d\n",parent->word,child->word,child_index);
+}
+
+void print_tree(treenode* anchor, int level){ // Prints node and all children and their children and so on + proper tabbing
+	print_treenode(anchor);
+	if(anchor->num_children>0){
+		int num_children = anchor->num_children;
+		for(int i = 0; i<num_children; i++){
+			for(int j = 0; j<level; j++) printf("\t");
+			print_tree(anchor->children[i],1+level);
+		}
+	}
+}
+
+treenode* build_parse_tree(token* anchor){
+	if(strcmp(anchor->word,"ANCHOR_TOKEN")!=0){
+		printf("[PARSER ERROR]: No ANCHOR_TOKEN present.\n");
+		exit(1);
+	}
+	
+	token* temp = anchor->next;
+	treenode* treenode_anchor = new_treenode_simple("TREENODE_ANCHOR");
+	treenode* treenode_last = treenode_anchor; // Last node before current
+	printf("!! Beginning node building on <%s>!!\n",treenode_last->word);
+	
+	while(temp!=NULL){
+		treenode* treenode_temp = token2treenode(temp);
+		treenode_temp->parent = treenode_last; // Set node parent to last biggest node
+
+		if(treenode_temp->type==TYPE_METHOD){ // Begin adding children to method node
+			treenode_add_child(treenode_last, treenode_temp); // Add new node as child to last big node
+			treenode_last = treenode_temp; // This node is new biggest node
+			printf("!! Entering Node <%s>!!\n",treenode_last->word);
+		}
+		else if(temp->word[0]=='}' || temp->word[0]==')'){ // Found close brace, leave this node (go back to parent)
+			printf("!! Exiting Node <%s>!!\n",treenode_last->word);
+			printf("!! Successfully added %d children !!\n",treenode_last->num_children);
+			treenode_last = treenode_last->parent;
+		}
+		else{ // Add child to last treenode
+			treenode* child = token2treenode(temp);
+			child->parent = treenode_last;
+			treenode_add_child(treenode_last,child);
+		}
 		
 		temp = temp->next;
 	}
-}*/
-
-int token_is_openbrace(token* t){
-	return (t->word[0]=='{');
+	
+	return treenode_anchor;
 }
-
-int token_is_closebrace(token* t){
-	return (t->word[0]=='}');
-}
-
-treenode* build_parser_tree(treenode* anchor, token* token_anchor){
-	printf("!! BUILDING TREENODE %s\n", token_anchor->word);
-	//treenode* temp = anchor;
-	token* token_temp = token_anchor->next;
-	
-	while(token_temp != NULL){
-		if( token_is_openbrace(token_temp) ){
-			int num_tokens = count_tokens(token_temp);
-			treenode* temp = new_treenode_full("TREENODE_ANCHOR", TYPE_NONE, 0, 0, num_tokens);
-			
-			//printf("!! NEW SCOPE\n");
-			return build_parser_tree(temp, token_temp);
-		}
-		
-		else if( token_is_closebrace(token_temp) ){
-			//printf("!! LEAVING TREENODE\n");
-			break;
-		}
-		
-		else{
-			treenode* temp_treenode = new_treenode_simple(
-				token_temp->word);
-			
-			int num_tokens = count_tokens(token_temp);
-			treenode* temp = new_treenode_full("TREENODE_ANCHOR", TYPE_NONE, 0, 0, num_tokens);
-			
-			//printf("!! NEW SCOPE\n");
-			//return build_parser_tree(temp, token_temp);
-			
-			treenode_add_child(temp, temp_treenode);
-		}
-		
-		token_temp = token_temp->next;
-	}
-	printf("!! LEAVING TREENODE %s\n", token_anchor->word);
-	
-	return anchor;
-}
-
-/*treenode* build_parser_tree(token* token_anchor){
-	treenode* anchor = new_treenode_simple("TREENODE_ANCHOR");
-	token* token_temp = token_anchor;
-	
-	while(token_temp != NULL){
-		printf("@ token: <%s>\n", token_temp->word);
-		treenode* child_treenode = new_treenode_simple(token_temp->word);
-		treenode_add_child(anchor, child_treenode);
-		
-		token_temp = token_temp->next;
-	}
-	
-	return anchor;
-}*/
